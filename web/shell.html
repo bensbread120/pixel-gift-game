@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- no pinch/double-tap zoom; draw under notches when in landscape -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#141419">
+  <title>A little game for you</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      overflow: hidden;          /* arrow keys / space must not scroll the page */
+      background: #141419;
+      overscroll-behavior: none; /* no pull-to-refresh or rubber-banding */
+    }
+    body, canvas {
+      touch-action: none;        /* no browser panning/zooming from touches */
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    canvas {
+      display: block;
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      outline: none;
+      image-rendering: pixelated; /* never blur the pixel art when scaled */
+    }
+    #loading {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px;
+      color: #eee; font: 16px/1.4 system-ui, sans-serif;
+    }
+    #bar { width: min(240px, 60vw); height: 6px; border-radius: 3px; background: #333; overflow: hidden; }
+    #fill { width: 0; height: 100%; background: #e86a8e; transition: width 0.15s; }
+  </style>
+</head>
+<body>
+  <!-- SDL moves everything except the canvas into a hidden div once the
+       game window opens (fill-document mode), which hides the loader. -->
+  <div id="loading">
+    <div id="status">Loading…</div>
+    <div id="bar"><div id="fill"></div></div>
+  </div>
+  <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+
+  <script>
+    var statusEl = document.getElementById('status');
+    var fillEl = document.getElementById('fill');
+
+    var Module = {
+      canvas: document.getElementById('canvas'),
+      // testing shortcuts: ?start=<label> jumps into the story (village,
+      // stop1..stop6, field, ending) and ?auto turns on the autopilot
+      arguments: (function () {
+        var args = [], q = new URLSearchParams(location.search);
+        if (q.get('start')) args.push('--start', q.get('start'));
+        if (q.has('auto')) args.push('--auto');
+        return args;
+      })(),
+      // Emscripten reports progress as e.g. "Downloading data... (1234/5678)"
+      setStatus: function (text) {
+        if (!text) return;
+        var m = text.match(/\((\d+(?:\.\d+)?)\/(\d+)\)/);
+        if (m) {
+          fillEl.style.width = (100 * m[1] / m[2]) + '%';
+          statusEl.textContent = 'Loading…';
+        } else {
+          statusEl.textContent = text.replace(/\.\.\.$/, '…');
+        }
+      },
+      onRuntimeInitialized: function () {
+        fillEl.style.width = '100%';
+        Module.canvas.focus(); // keyboard works without clicking first
+      },
+      print: function (text) { console.log(text); },
+      printErr: function (text) { console.warn(text); },
+    };
+
+    window.onerror = function (message) {
+      statusEl.textContent = 'Something went wrong :( Try reloading the page.';
+      console.error(message);
+    };
+
+    // iOS Safari ignores user-scalable=no; block pinch and double-tap zoom here.
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+    var lastTouchEnd = 0;
+    document.addEventListener('touchend', function (e) {
+      var now = Date.now();
+      if (now - lastTouchEnd < 300) e.preventDefault();
+      lastTouchEnd = now;
+    }, { passive: false });
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>
