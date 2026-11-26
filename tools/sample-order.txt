@@ -1,0 +1,54 @@
+Hi! Here's my order form, so excited for this 🎄
+
+=== Pixel gift order (v1) ===
+Package: Basic
+Etsy order: 3141592653
+
+[Player]
+Name: Jordan
+Skin: medium
+Hair: dark brown
+Outfit: green
+
+[You]
+Name: Priya
+Skin: brown
+Hair: black
+Outfit: purple
+Trousers: denim
+
+[Dog]
+Name: Pickle
+Coat: golden
+
+[Words]
+Title: Jordan’s Big Day Out
+Dedication: For Jordan, my favourite human. Love, Priya
+Final line: Merry Christmas
+Memory 1 title: The café
+Memory 1 caption: Where you spilled a whole latte on me and then asked for my number.
+Memory 2 title: Snowdonia
+Memory 2 caption: Our first trip. It rained for four days and it was perfect.
+Memory 3 title: Flat 4B
+Memory 3 caption: The tiny flat with the broken heater and the best view in town.
+Memory 4 title: Pickle arrives
+Memory 4 caption: The day we brought home a very small, very loud puppy.
+Memory 5 title: Parkrun
+Memory 5 caption: You talked me into running 5k every Saturday. I still complain.
+Memory 6 title: Now
+Memory 6 caption: Three years on and you still make me laugh every single day.
+Message:
+Dear Jordan,
+
+Merry Christmas! I wanted to give you something a bit different this year, so here’s a tiny world with all our favourite bits in it.
+
+Thank you for the coffees, the bad puns, the muddy walks and for putting up with Pickle stealing your socks.
+
+I can’t wait for all the adventures still to come — here’s to many more.
+
+All my love,
+Priya ❤️
+=== End of order ===
+
+Thanks!
+Priya

@@ -381,3 +381,14 @@ def all_sprites():
     for c in out.values():
         c.auto_shade(skip=DETAILS, round_fw=16)
     return out
+
+
+def apply_looks(hero=None, partner=None, pet=None):
+    """Recolour the characters for a gift (palette entries from looks.py).
+    Call before drawing; the palettes above are changed in place."""
+    global DETAILS
+    for pal, new in ((HERO, hero), (PARTNER, partner), (PET, pet)):
+        if new:
+            pal.update(new)
+    # the blush follows each skin tone; keep every one out of the shading
+    DETAILS = [SKIN['e'], SKIN['m'], HERO['b'], PARTNER['b'], PET['n'], PET['e'], PET['t'], PET['f']]

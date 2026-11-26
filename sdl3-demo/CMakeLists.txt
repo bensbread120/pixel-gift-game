@@ -12,27 +12,28 @@ set_target_properties(sdl3-demo PROPERTIES
 target_link_libraries(sdl3-demo PRIVATE SDL3::SDL3 SDL3_image::SDL3_image glm::glm)
 
 if (EMSCRIPTEN)
-  # Produces index.html + index.js + index.wasm + index.data in the build dir,
-  # ready to serve as a static site.
+  # Produces ONE self-contained index.html (the wasm is embedded in it) with
+  # no assets inside. It's the same for every gift: tools/gift.py injects a
+  # gift's assets (sprites, memory cards, maps, gift.txt) into a copy of it,
+  # and the page writes them to /assets in the virtual filesystem before the
+  # game starts. SDL_GetBasePath() is "/" there, so "<base>assets/x.png"
+  # resolves the same way it does natively.
   set(SHELL_FILE ${PROJECT_SOURCE_DIR}/web/shell.html)
   set_target_properties(sdl3-demo PROPERTIES
     OUTPUT_NAME "index"
     SUFFIX ".html"
-    # relink when the shell or any asset changes, not just the code
-    LINK_DEPENDS "${SHELL_FILE}"
+    LINK_DEPENDS "${SHELL_FILE}"  # relink when the shell changes, not just the code
   )
   target_link_options(sdl3-demo PRIVATE
-    # assets/ lands at /assets in the virtual filesystem. SDL_GetBasePath()
-    # is "/" there, so TextureCache's "<base>assets/x.png" resolves the same
-    # way it does natively. The .aseprite source art isn't needed at runtime.
-    "--preload-file=${PROJECT_SOURCE_DIR}/assets@/assets"
-    "--exclude-file=*.aseprite"
     "--shell-file=${SHELL_FILE}"
+    # one file that also opens from file://, for the offline keepsake copy
+    "-sSINGLE_FILE=1"
+    # no --preload-file, so ask for the filesystem explicitly; the shell's
+    # preRun fills it
+    "-sFORCE_FILESYSTEM=1"
+    "-sEXPORTED_RUNTIME_METHODS=FS,addRunDependency,removeRunDependency"
     "-sALLOW_MEMORY_GROWTH=1"
   )
-  # --preload-file doesn't track the files it packs; re-link when any change
-  file(GLOB_RECURSE ASSET_FILES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/assets/*)
-  set_property(TARGET sdl3-demo APPEND PROPERTY LINK_DEPENDS ${ASSET_FILES})
   return()
 endif()
 

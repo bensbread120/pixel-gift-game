@@ -2,7 +2,8 @@
 //
 // The hero is woken by the pet, follows it out into the village past six
 // memories, and finds the partner waiting with a picnic. The story
-// itself -- every line and the order things happen -- lives in story.h;
+// itself -- every line and the order things happen -- lives in story.h,
+// filled in from each gift's assets/gift.txt;
 // maps are in assets/maps (tools/make_maps.py) and art in assets/ (tools/make_art.py).
 //
 // SDL drives the loop through SDL_AppInit/Event/Iterate/Quit so the same
@@ -217,7 +218,7 @@ void startBeat(Game& g)
 			g.saySpeaker = b.a;
 			g.sayText = b.b ? b.b : "";
 			g.sayShown = 0;
-			if (b.a && std::strcmp(b.a, story::PET_NAME) == 0)
+			if (b.a && story::PET_NAME == b.a)
 			{
 				g.petExcited = false;
 				if (petArrived(g) && g.pet.pose.empty())
@@ -831,7 +832,7 @@ void render(Game& g)
 		{
 			const story::Memory& m = story::MEMORIES[b.n];
 			SDL_Texture* photo = b.n < static_cast<int>(g.photos.size()) ? g.photos[b.n] : nullptr;
-			ui::memoryCard(f, photo, m.title, m.caption, std::min(1.0f, g.beatTime / 0.3f), g.time);
+			ui::memoryCard(f, photo, m.title.c_str(), m.caption.c_str(), std::min(1.0f, g.beatTime / 0.3f), g.time);
 			break;
 		}
 		case Op::Message:
@@ -890,13 +891,24 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 	// desktop mouse clicks shouldn't pop up the touch controls
 	SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
 
-	if (!engine::initialise(g->state, story::TITLE)) {
+	// --assets <dir> plays a gift's assets instead of the ones next to the exe,
+	// e.g. --assets orders/<id>/assets (to check an order before delivering it)
+	for (int i = 1; i + 1 < argc; i++)
+		if (std::strcmp(argv[i], "--assets") == 0)
+		{
+			std::string dir = argv[i + 1];
+			if (!dir.empty() && dir.back() != '/' && dir.back() != '\\') dir += '/';
+			engine::assetDir() = dir;
+		}
+	story::load();
+
+	if (!engine::initialise(g->state, story::TITLE.c_str())) {
 		return SDL_APP_FAILURE;
 	}
 
 	g->sprites.load(g->state.renderer, g->cache);
 	for (const story::Memory& m : story::MEMORIES)
-		g->photos.push_back(g->cache.load(g->state.renderer, std::string("assets/memories/") + m.image + ".png"));
+		g->photos.push_back(g->cache.load(g->state.renderer, "memories/" + m.image + ".png"));
 
 	resetStory(*g);
 	// --start <label> jumps into the story, e.g. --start stop3 (for testing)

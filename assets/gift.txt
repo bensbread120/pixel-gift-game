@@ -1,0 +1,22 @@
+# The gift: names and words the story template (sdl3-demo/story.h) fills in.
+# This is the placeholder story. tools/gift.py writes one of these for each
+# order from its order.json. "\n" is a line break; plain ASCII only.
+hero: Alex
+partner: Sam
+pet: Biscuit
+title: A Little Adventure
+dedication: For Alex, with love. Sam
+final_line: Happy anniversary
+memory1_title: The beginning
+memory1_caption: The day we met. I knew straight away there was something about you.
+memory2_title: First trip
+memory2_caption: Our first trip away together, and the start of a lot of adventures.
+memory3_title: Home
+memory3_caption: The first place that was ours. Small, a bit draughty, and perfect.
+memory4_title: Outdoors
+memory4_caption: Long walks, wrong turns and the best views, always with you.
+memory5_title: Dressed up
+memory5_caption: We scrub up pretty well together.
+memory6_title: Now
+memory6_caption: And here we are. Still my favourite person.
+message: Dear Alex,\n\nThis is where the long message goes. It is the heart of the game, so it can be as long as you like: the pages are split to fit the screen.\n\nWrite about the times you've shared, what you love about each other, and what you're looking forward to next.\n\nLove,\nSam

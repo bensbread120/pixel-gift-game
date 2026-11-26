@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Your gift game: order form</title>
+  <!--
+    The order form for a gift game. It sends nothing anywhere: it turns the
+    answers into a block of text that the buyer pastes into an Etsy message,
+    and tools/gift.py import reads that block. Keep the colour options in step
+    with tools/looks.py and the length limits with LIMITS in tools/gift.py.
+  -->
+  <style>
+    :root {
+      --paper: #fff8ec; --card: #ffffff; --ink: #2b1d2a; --muted: #6f6170;
+      --line: #e6d9cc; --accent: #d4507a; --accent-ink: #ffffff; --warn: #a3501b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #141419; --card: #1e1e26; --ink: #eeeaf0; --muted: #a49cab;
+        --line: #33313d; --accent: #e86a8e; --accent-ink: #141419; --warn: #f0b27a;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; }
+    h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; }
+    h2 { font-size: 19px; margin: 0 0 4px; }
+    p { margin: 0 0 12px; }
+    .lede { color: var(--muted); margin-bottom: 24px; }
+    section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    section > .hint { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+    label { display: block; font-weight: 600; font-size: 14px; margin: 14px 0 6px; }
+    .field-hint { font-weight: 400; color: var(--muted); }
+    input[type=text], textarea {
+      width: 100%; font: inherit; color: var(--ink); background: var(--paper);
+      border: 1.5px solid var(--line); border-radius: 8px; padding: 10px 12px;
+    }
+    textarea { min-height: 220px; resize: vertical; }
+    input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    .count { font-size: 12px; color: var(--muted); text-align: right; margin-top: 2px; min-height: 1.2em; }
+    .count.over, .count.odd { color: var(--warn); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+    .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+    .swatches label { margin: 0; font-weight: 400; }
+    .swatches input { position: absolute; opacity: 0; pointer-events: none; }
+    .swatches span {
+      display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 6px;
+      border: 1.5px solid var(--line); border-radius: 999px; font-size: 14px; cursor: pointer;
+    }
+    .swatches i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.25); display: inline-block; }
+    .swatches input:checked + span { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .swatches input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .packages { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 520px) { .packages { grid-template-columns: 1fr; } }
+    .packages label { margin: 0; font-weight: 400; }
+    .packages input { position: absolute; opacity: 0; pointer-events: none; }
+    .packages span { display: block; border: 1.5px solid var(--line); border-radius: 10px; padding: 12px; cursor: pointer; height: 100%; }
+    .packages b { display: block; }
+    .packages input:checked + span { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .memory { border-top: 1px solid var(--line); padding-top: 6px; margin-top: 14px; }
+    .memory:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+    button {
+      font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 12px 18px;
+      background: var(--accent); color: var(--accent-ink); cursor: pointer;
+    }
+    button.secondary { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+    #result textarea { min-height: 260px; font: 13px/1.45 ui-monospace, Consolas, monospace; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+    #problems { color: var(--warn); font-size: 14px; }
+    #problems ul { margin: 8px 0 0; padding-left: 20px; }
+    ol.steps { padding-left: 20px; margin: 0; }
+    ol.steps li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Your gift game</h1>
+  <p class="lede">Fill this in after you order. Nothing is sent from this page: at the end it makes a block of text for you to paste into an Etsy message to me. Your answers are saved in this browser as you go, so you can come back to finish.</p>
+
+  <form id="form" autocomplete="off">
+    <section>
+      <h2>Package</h2>
+      <p class="hint">The one you bought on Etsy.</p>
+      <div class="packages">
+        <label><input type="radio" name="package" value="Basic" checked><span><b>Basic</b>Drawn picture cards for the six memories.</span></label>
+        <label><input type="radio" name="package" value="With photos"><span><b>With photos</b>Six of your photos, turned into pixel art. Attach them to your Etsy message.</span></label>
+      </div>
+      <label for="etsy_order">Etsy order number <span class="field-hint">(optional)</span></label>
+      <input type="text" id="etsy_order" name="etsy_order" inputmode="numeric" maxlength="20">
+    </section>
+
+    <section>
+      <h2>The player</h2>
+      <p class="hint">The person the gift is for. A dog wakes them up and leads them through a village full of your memories. Their character has long hair and a dress.</p>
+      <label for="hero_name">Their name</label>
+      <input type="text" id="hero_name" name="hero_name" data-limit="12" required>
+      <div class="count"></div>
+      <label>Skin</label><div class="swatches" data-name="hero_skin" data-kind="skin" data-default="porcelain"></div>
+      <label>Hair</label><div class="swatches" data-name="hero_hair" data-kind="hair" data-default="ginger"></div>
+      <label>Dress</label><div class="swatches" data-name="hero_outfit" data-kind="outfit" data-default="pink"></div>
+    </section>
+
+    <section>
+      <h2>You</h2>
+      <p class="hint">You're waiting at the end of the game with a picnic. Your character has short hair, a jumper and trousers.</p>
+      <label for="partner_name">Your name</label>
+      <input type="text" id="partner_name" name="partner_name" data-limit="12" required>
+      <div class="count"></div>
+      <label>Skin</label><div class="swatches" data-name="partner_skin" data-kind="skin" data-default="porcelain"></div>
+      <label>Hair</label><div class="swatches" data-name="partner_hair" data-kind="hair" data-default="light brown"></div>
+      <label>Jumper</label><div class="swatches" data-name="partner_outfit" data-kind="outfit" data-default="blue"></div>
+      <label>Trousers</label><div class="swatches" data-name="partner_trousers" data-kind="trousers" data-default="navy"></div>
+    </section>
+
+    <section>
+      <h2>The dog</h2>
+      <p class="hint">Your dog, a dog you used to have, or the dog you've always wanted. It does most of the talking.</p>
+      <label for="pet_name">Dog's name</label>
+      <input type="text" id="pet_name" name="pet_name" data-limit="12" required>
+      <div class="count"></div>
+      <label>Coat</label><div class="swatches" data-name="pet_coat" data-kind="coat" data-default="white and orange"></div>
+    </section>
+
+    <section>
+      <h2>Title and dedication</h2>
+      <p class="hint">Shown on the title screen.</p>
+      <label for="title">Title <span class="field-hint">e.g. "Our Little Adventure"</span></label>
+      <input type="text" id="title" name="title" data-limit="24" required>
+      <div class="count"></div>
+      <label for="dedication">Dedication <span class="field-hint">e.g. "For Jo, with love. Sam"</span></label>
+      <input type="text" id="dedication" name="dedication" data-limit="60" required>
+      <div class="count"></div>
+      <label for="final_line">Last words, shown big at the very end <span class="field-hint">e.g. "Merry Christmas"</span></label>
+      <input type="text" id="final_line" name="final_line" data-limit="20" required>
+      <div class="count"></div>
+    </section>
+
+    <section id="memories">
+      <h2>Six memories</h2>
+      <p class="hint">The dog stops six times on the way, and each stop shows one of these as a picture card with a short title and caption. In order, oldest first works well.</p>
+    </section>
+
+    <section>
+      <h2>Your message</h2>
+      <p class="hint">The heart of the gift. After the picnic, the player reads this page by page. A few short paragraphs work best.</p>
+      <label for="message">Message</label>
+      <textarea id="message" name="message" data-limit="2500" required></textarea>
+      <div class="count"></div>
+    </section>
+
+    <section id="result">
+      <h2>Send it to me</h2>
+      <ol class="steps">
+        <li>Press <b>Make my order text</b>, then <b>Copy</b>.</li>
+        <li>On Etsy, open your purchase and choose <b>Message seller</b> (or reply to my message).</li>
+        <li>Paste the text and send it. For the photos package, attach your six photos to the same message, in memory order.</li>
+      </ol>
+      <div class="actions">
+        <button type="button" id="make">Make my order text</button>
+      </div>
+      <div id="problems" role="alert"></div>
+      <div id="output" hidden>
+        <label for="text">Your order text</label>
+        <textarea id="text" readonly></textarea>
+        <div class="actions">
+          <button type="button" id="copy">Copy</button>
+          <span id="copied" class="field-hint" aria-live="polite"></span>
+        </div>
+      </div>
+    </section>
+  </form>
+</main>
+
+<script>
+  // Keep in step with tools/looks.py.
+  var LOOKS = {
+    skin: { 'porcelain': 'fcd6bc', 'light': 'f3c3a0', 'medium': 'd9a07a', 'tan': 'bf855e', 'brown': '96603f', 'deep': '6b412c' },
+    hair: { 'blonde': 'ecc66c', 'ginger': 'e29a56', 'light brown': 'c49a58', 'dark brown': '6e4630', 'black': '3b2d36', 'grey': 'b9b5bd', 'pink': 'f29ac0', 'blue': '6aa8e8' },
+    outfit: { 'pink': 'f09aa8', 'red': 'd9534f', 'orange': 'ee8f45', 'yellow': 'f2c14e', 'green': '5fae6a', 'teal': '3fb8a8', 'blue': '3f86de', 'purple': '9a72d0', 'black': '4a4458' },
+    trousers: { 'navy': '4c5274', 'denim': '4a6fa5', 'grey': '7a7a88', 'brown': '7a5a44', 'black': '3a3646' },
+    coat: { 'white and orange': ['fffaf0', 'e47e36'], 'white and brown': ['fffaf0', '7a4a32'], 'white and black': ['fffaf0', '3d3640'],
+            'golden': ['e9b860', 'c98a3a'], 'cream': ['f6e6c4', 'e0bd88'], 'chocolate': ['8a5a3e', '5e3a28'], 'black': ['4a4450', '332e3a'], 'grey': ['bcbcc8', '8a8a9c'] },
+  };
+  var STORE = 'gift-order-draft';
+  var form = document.getElementById('form');
+
+  // colour pickers
+  document.querySelectorAll('.swatches').forEach(function (box) {
+    var table = LOOKS[box.dataset.kind];
+    Object.keys(table).forEach(function (name) {
+      var c = table[name];
+      var bg = Array.isArray(c) ? 'linear-gradient(135deg, #' + c[0] + ' 50%, #' + c[1] + ' 50%)' : '#' + c;
+      var label = document.createElement('label');
+      label.innerHTML = '<input type="radio"><span><i></i></span>';
+      var input = label.querySelector('input');
+      input.name = box.dataset.name;
+      input.value = name;
+      input.checked = name === box.dataset.default;
+      label.querySelector('i').style.background = bg;
+      label.querySelector('span').appendChild(document.createTextNode(name));
+      box.appendChild(label);
+    });
+  });
+
+  // six memories
+  var memories = document.getElementById('memories');
+  for (var i = 1; i <= 6; i++) {
+    var div = document.createElement('div');
+    div.className = 'memory';
+    div.innerHTML =
+      '<label for="m' + i + 't">Memory ' + i + ': title <span class="field-hint">e.g. "First date"</span></label>' +
+      '<input type="text" id="m' + i + 't" name="m' + i + 't" data-limit="20" required><div class="count"></div>' +
+      '<label for="m' + i + 'c">Caption <span class="field-hint">a sentence or two</span></label>' +
+      '<input type="text" id="m' + i + 'c" name="m' + i + 'c" data-limit="100" required><div class="count"></div>';
+    memories.appendChild(div);
+  }
+
+  // The game draws plain letters only: no emoji, and accents become plain letters.
+  function oddChars(s) {
+    var plain = s.replace(/[‘’“”–—… ]/g, '');
+    plain = plain.normalize('NFKD').replace(/[̀-ͯ]/g, '');
+    var odd = plain.match(/[^\x20-\x7e\n]/gu);
+    return odd ? Array.from(new Set(odd)) : [];
+  }
+
+  function updateCount(el) {
+    var limit = +el.dataset.limit, count = el.nextElementSibling, n = el.value.length;
+    var odd = oddChars(el.value);
+    count.className = 'count' + (n > limit ? ' over' : '') + (odd.length ? ' odd' : '');
+    count.textContent = (odd.length ? 'These won\'t show in the game: ' + odd.join(' ') + '  ·  ' : '') +
+      (n > limit ? (n - limit) + ' too many  ·  ' : '') + n + ' / ' + limit;
+  }
+
+  function save() {
+    var data = {};
+    new FormData(form).forEach(function (v, k) { data[k] = v; });
+    try { localStorage.setItem(STORE, JSON.stringify(data)); } catch (e) {}
+  }
+
+  function restore() {
+    var data = null;
+    try { data = JSON.parse(localStorage.getItem(STORE)); } catch (e) {}
+    if (!data) return;
+    Object.keys(data).forEach(function (k) {
+      var els = form.elements[k];
+      if (!els) return;
+      if (els instanceof RadioNodeList) els.forEach(function (r) { r.checked = r.value === data[k]; });
+      else els.value = data[k];
+    });
+  }
+
+  restore();
+  form.querySelectorAll('[data-limit]').forEach(function (el) {
+    updateCount(el);
+    el.addEventListener('input', function () { updateCount(el); save(); });
+  });
+  form.addEventListener('change', save);
+
+  function one(s) { return s.replace(/\s+/g, ' ').trim(); }
+
+  document.getElementById('make').addEventListener('click', function () {
+    var f = form.elements, problems = [];
+    form.querySelectorAll('[data-limit]').forEach(function (el) {
+      var name = el.closest('section').querySelector('h2').textContent + ': ' +
+        el.labels[0].childNodes[0].textContent.trim();
+      if (!el.value.trim()) problems.push(name + ' is empty');
+      else if (el.value.length > +el.dataset.limit) problems.push(name + ' is too long');
+    });
+    var box = document.getElementById('problems');
+    if (problems.length) {
+      box.innerHTML = 'Nearly there:<ul></ul>';
+      problems.forEach(function (p) { var li = document.createElement('li'); li.textContent = p; box.querySelector('ul').appendChild(li); });
+      document.getElementById('output').hidden = true;
+      return;
+    }
+    box.textContent = '';
+    var lines = [
+      '=== Pixel gift order (v1) ===',
+      'Package: ' + f['package'].value,
+      'Etsy order: ' + one(f['etsy_order'].value),
+      '',
+      '[Player]',
+      'Name: ' + one(f['hero_name'].value),
+      'Skin: ' + f['hero_skin'].value,
+      'Hair: ' + f['hero_hair'].value,
+      'Outfit: ' + f['hero_outfit'].value,
+      '',
+      '[You]',
+      'Name: ' + one(f['partner_name'].value),
+      'Skin: ' + f['partner_skin'].value,
+      'Hair: ' + f['partner_hair'].value,
+      'Outfit: ' + f['partner_outfit'].value,
+      'Trousers: ' + f['partner_trousers'].value,
+      '',
+      '[Dog]',
+      'Name: ' + one(f['pet_name'].value),
+      'Coat: ' + f['pet_coat'].value,
+      '',
+      '[Words]',
+      'Title: ' + one(f['title'].value),
+      'Dedication: ' + one(f['dedication'].value),
+      'Final line: ' + one(f['final_line'].value),
+    ];
+    for (var i = 1; i <= 6; i++) {
+      lines.push('Memory ' + i + ' title: ' + one(f['m' + i + 't'].value));
+      lines.push('Memory ' + i + ' caption: ' + one(f['m' + i + 'c'].value));
+    }
+    lines.push('Message:', f['message'].value.trim(), '=== End of order ===');
+    var text = document.getElementById('text');
+    text.value = lines.join('\n');
+    document.getElementById('output').hidden = false;
+    text.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  document.getElementById('copy').addEventListener('click', function () {
+    var text = document.getElementById('text'), note = document.getElementById('copied');
+    function done() { note.textContent = 'Copied. Now paste it into an Etsy message.'; }
+    if (navigator.clipboard) navigator.clipboard.writeText(text.value).then(done, function () { text.select(); document.execCommand('copy'); done(); });
+    else { text.select(); document.execCommand('copy'); done(); }
+  });
+</script>
+</body>
+</html>

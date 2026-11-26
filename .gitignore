@@ -85,3 +85,7 @@ art-src/*
 
 # Deploy secrets
 .env
+
+# Orders hold buyers' names, words and photos; site/ is built from them.
+orders/
+site/

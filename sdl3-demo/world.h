@@ -79,11 +79,11 @@ public:
 
 	void load(SDL_Renderer* r, engine::TextureCache& cache)
 	{
-		tiles = cache.load(r, "assets/tiles.png");
+		tiles = cache.load(r, "tiles.png");
 		for (const art::SpriteDef& def : art::SPRITES)
 		{
 			Sprite s;
-			s.tex = cache.load(r, std::string("assets/sprites/") + def.name + ".png");
+			s.tex = cache.load(r, std::string("sprites/") + def.name + ".png");
 			s.frames = def.frames;
 			if (s.tex)
 			{
@@ -190,8 +190,7 @@ struct Map
 	{
 		*this = Map{};
 		name = mapName;
-		const char* base = SDL_GetBasePath();
-		std::string path = std::string(base ? base : "") + "assets/maps/" + mapName + ".txt";
+		std::string path = engine::assetPath("maps/" + mapName + ".txt");
 		size_t size = 0;
 		char* data = static_cast<char*>(SDL_LoadFile(path.c_str(), &size));
 		if (!data)

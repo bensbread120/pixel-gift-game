@@ -94,7 +94,7 @@ def preview_sprites():
     return s
 
 
-def build_atlas():
+def build_atlas(assets):
     groups = w.tile_groups()
     entries, total = [], 0
     for name, tiles in groups:
@@ -107,7 +107,7 @@ def build_atlas():
         for t in tiles:
             atlas.blit(t, (i % ATLAS_COLS) * w.T, (i // ATLAS_COLS) * w.T)
             i += 1
-    atlas.save(os.path.join(ASSETS, 'tiles.png'))
+    atlas.save(os.path.join(assets, 'tiles.png'))
     return entries
 
 
@@ -128,13 +128,13 @@ def placeholder_card(index):
     return img
 
 
-def pixelate_photos():
-    """Turn each art-src/photos/memoryN.* into a chunky pixel-art memory card,
+def pixelate_photos(assets, photos_dir, crops):
+    """Turn each <photos_dir>/memoryN.* into a chunky pixel-art memory card,
     and draw a placeholder for any memory that has no photo."""
-    out_dir = os.path.join(ASSETS, 'memories')
+    out_dir = os.path.join(assets, 'memories')
     os.makedirs(out_dir, exist_ok=True)
     made = []
-    photos = sorted(glob.glob(os.path.join(PHOTOS, 'memory*.*'))) if os.path.isdir(PHOTOS) else []
+    photos = sorted(glob.glob(os.path.join(photos_dir, 'memory*.*'))) if os.path.isdir(photos_dir) else []
     have = {os.path.splitext(os.path.basename(p))[0] for p in photos}
     for i, name in enumerate(MEMORY_NAMES):
         if name not in have:
@@ -144,7 +144,7 @@ def pixelate_photos():
     for path in photos:
         name = os.path.splitext(os.path.basename(path))[0]
         img = Image.open(path).convert('RGB')
-        crop = CROPS.get(name)
+        crop = crops.get(name)
         if crop:
             W, H = img.size
             img = img.crop((int(crop[0] * W), int(crop[1] * H), int(crop[2] * W), int(crop[3] * H)))
@@ -209,15 +209,14 @@ def hand_sprite(name, frames):
     return img.resize((img.width * SCALE, img.height * SCALE), Image.NEAREST)
 
 
-def main():
-    if sys.argv[1:2] == ['--export']:
-        export(sys.argv[2:])
-        return
-    os.makedirs(os.path.join(ASSETS, 'sprites'), exist_ok=True)
-    entries = build_atlas()
+def generate(assets=ASSETS, photos_dir=PHOTOS, crops=None, header=True):
+    """Draw everything into `assets`. tools/gift.py calls this for each gift,
+    with the gift's folders and its looks already applied (art_chars.apply_looks)."""
+    os.makedirs(os.path.join(assets, 'sprites'), exist_ok=True)
+    entries = build_atlas(assets)
     frames, by_hand = [], []
     for name, (c, n) in sprites().items():
-        out = os.path.join(ASSETS, 'sprites', name + '.png')
+        out = os.path.join(assets, 'sprites', name + '.png')
         img = hand_sprite(name, n)
         if img:
             img.save(out)
@@ -225,11 +224,20 @@ def main():
         else:
             c.save(out)
         frames.append((name, n))
-    write_header(entries, frames)
-    memories = pixelate_photos()
+    if header:
+        write_header(entries, frames)
+    memories = pixelate_photos(assets, photos_dir, CROPS if crops is None else crops)
     print(f'atlas: {sum(e[2] for e in entries)} tiles, sprites: {len(frames)}, memories: {memories}')
     if by_hand:
         print(f'hand-edited sprites from art-src/sprites: {by_hand}')
+
+
+
+def main():
+    if sys.argv[1:2] == ['--export']:
+        export(sys.argv[2:])
+        return
+    generate()
 
 
 if __name__ == '__main__':

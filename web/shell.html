@@ -7,7 +7,8 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#141419">
-  <title>A little game for you</title>
+  <meta name="robots" content="noindex">
+  <title>__GIFT_TITLE__</title>
   <style>
     html, body {
       margin: 0; padding: 0;
@@ -34,24 +35,129 @@
       position: fixed; inset: 0;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 14px;
+      padding: 0 16px; box-sizing: border-box;
       color: #eee; font: 16px/1.4 system-ui, sans-serif;
     }
+    #status { text-align: center; }
     #bar { width: min(240px, 60vw); height: 6px; border-radius: 3px; background: #333; overflow: hidden; }
     #fill { width: 0; height: 100%; background: #e86a8e; transition: width 0.15s; }
+
+    /* the password gate, shown only for the online (encrypted) copy */
+    #gate { display: flex; flex-direction: column; align-items: center; gap: 16px; width: min(300px, 100%); }
+    #gate[hidden] { display: none; }
+    #gate svg { width: 56px; height: 56px; }
+    #gate h1 { font-size: 18px; font-weight: 600; margin: 0; text-align: center; }
+    #gate input, #gate button {
+      width: 100%; box-sizing: border-box; font: inherit; padding: 12px 14px;
+      border-radius: 8px; border: 2px solid #333; background: #1e1e26; color: #eee;
+    }
+    #gate input { user-select: text; -webkit-user-select: text; } /* iOS won't type into it otherwise */
+    #gate input:focus { outline: none; border-color: #e86a8e; }
+    #gate button { background: #e86a8e; border-color: #e86a8e; color: #141419; font-weight: 600; cursor: pointer; }
+    #gate button:disabled { opacity: 0.6; }
+    #gate .wrong { color: #f2a0b6; margin: 0; min-height: 1.4em; }
   </style>
 </head>
 <body>
   <!-- SDL moves everything except the canvas into a hidden div once the
        game window opens (fill-document mode), which hides the loader. -->
   <div id="loading">
+    <form id="gate" hidden>
+      <svg viewBox="0 0 7 6" aria-hidden="true" shape-rendering="crispEdges">
+        <path fill="#e86a8e" d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z"/>
+        <path fill="#f6b3c6" d="M1 1h1v1H1z"/>
+      </svg>
+      <h1>__GIFT_TITLE__</h1>
+      <input type="password" id="password" placeholder="Password" aria-label="Password"
+             autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      <button type="submit">Open</button>
+      <p class="wrong" role="alert"></p>
+    </form>
     <div id="status">Loading…</div>
     <div id="bar"><div id="fill"></div></div>
   </div>
   <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
 
+  <!-- tools/gift.py puts the gift here: {"files": {path: base64}} for the
+       offline copy, or {"enc": {...}} (the same, encrypted) for the online one -->
+  <script id="gift-data" type="application/json">__GIFT_DATA__</script>
+
   <script>
     var statusEl = document.getElementById('status');
     var fillEl = document.getElementById('fill');
+    var gateEl = document.getElementById('gate');
+
+    function fromBase64(s) {
+      var bin = atob(s), out = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    }
+
+    // AES-GCM with a key from the password (PBKDF2-SHA256), the same as
+    // tools/gift.py's encrypt(). Rejects on a wrong password.
+    function decrypt(enc, password) {
+      var subtle = window.crypto && crypto.subtle;
+      if (!subtle) return Promise.reject(new Error('This browser can\'t unlock the gift here (it needs https).'));
+      return subtle.importKey('raw', new TextEncoder().encode(password.trim().toLowerCase()), 'PBKDF2', false, ['deriveKey'])
+        .then(function (base) {
+          return subtle.deriveKey({ name: 'PBKDF2', salt: fromBase64(enc.salt), iterations: enc.iter, hash: 'SHA-256' },
+            base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+        })
+        .then(function (key) {
+          return subtle.decrypt({ name: 'AES-GCM', iv: fromBase64(enc.iv) }, key, fromBase64(enc.data));
+        })
+        .then(function (plain) { return JSON.parse(new TextDecoder().decode(plain)).files; });
+    }
+
+    // Ask for the password until it opens the gift. The QR code on the
+    // printed card carries it after the # (never sent to the server), and a
+    // correct one is remembered on this device, so neither asks again.
+    function unlock(enc) {
+      var store = 'gift-password:' + location.pathname;
+      var saved = new URLSearchParams(location.hash.slice(1)).get('p');
+      if (saved) history.replaceState(null, '', location.pathname + location.search);
+      else try { saved = localStorage.getItem(store); } catch (e) {}
+      return new Promise(function (resolve, reject) {
+        var wrongEl = gateEl.querySelector('.wrong');
+        var input = document.getElementById('password');
+        var button = gateEl.querySelector('button');
+        function attempt(password, quiet) {
+          button.disabled = true;
+          statusEl.textContent = 'Unlocking…';
+          decrypt(enc, password).then(function (files) {
+            try { localStorage.setItem(store, password); } catch (e) {}
+            gateEl.hidden = true;
+            resolve(files);
+          }, function (err) {
+            if (!(err instanceof DOMException)) return reject(err);
+            button.disabled = false;
+            statusEl.textContent = '';
+            gateEl.hidden = false;
+            if (!quiet) { wrongEl.textContent = 'Not quite, try again'; input.select(); }
+            input.focus();
+          });
+        }
+        gateEl.addEventListener('submit', function (e) {
+          e.preventDefault();
+          attempt(input.value, false);
+        });
+        if (saved) attempt(saved, true);
+        else { statusEl.textContent = ''; gateEl.hidden = false; input.focus(); }
+      });
+    }
+
+    function giftFiles() {
+      var raw = document.getElementById('gift-data').textContent.trim();
+      if (raw.indexOf('__GIFT') === 0)
+        return Promise.reject(new Error('This page has no gift in it yet: build one with tools/gift.py.'));
+      var gift = JSON.parse(raw);
+      return gift.enc ? unlock(gift.enc) : Promise.resolve(gift.files);
+    }
+
+    function showError(err) {
+      statusEl.textContent = err && err.message ? err.message : 'Something went wrong :( Try reloading the page.';
+      console.error(err);
+    }
 
     var Module = {
       canvas: document.getElementById('canvas'),
@@ -63,16 +169,24 @@
         if (q.has('auto')) args.push('--auto');
         return args;
       })(),
-      // Emscripten reports progress as e.g. "Downloading data... (1234/5678)"
-      setStatus: function (text) {
-        if (!text) return;
-        var m = text.match(/\((\d+(?:\.\d+)?)\/(\d+)\)/);
-        if (m) {
-          fillEl.style.width = (100 * m[1] / m[2]) + '%';
+      // Write the gift's files to /assets before the game starts. The game
+      // waits on the 'gift' dependency, so it can't start before unlocking.
+      preRun: [function () {
+        Module.addRunDependency('gift');
+        giftFiles().then(function (files) {
+          var FS = Module.FS;
+          Object.keys(files).forEach(function (path) {
+            var full = '/assets/' + path;
+            FS.mkdirTree(full.slice(0, full.lastIndexOf('/')));
+            FS.writeFile(full, fromBase64(files[path]));
+          });
           statusEl.textContent = 'Loading…';
-        } else {
-          statusEl.textContent = text.replace(/\.\.\.$/, '…');
-        }
+          fillEl.style.width = '60%';
+          Module.removeRunDependency('gift');
+        }).catch(showError);
+      }],
+      setStatus: function (text) {
+        if (text) statusEl.textContent = text.replace(/\.\.\.$/, '…');
       },
       onRuntimeInitialized: function () {
         fillEl.style.width = '100%';
@@ -92,7 +206,7 @@
     var lastTouchEnd = 0;
     document.addEventListener('touchend', function (e) {
       var now = Date.now();
-      if (now - lastTouchEnd < 300) e.preventDefault();
+      if (now - lastTouchEnd < 300 && e.target.tagName !== 'INPUT') e.preventDefault();
       lastTouchEnd = now;
     }, { passive: false });
   </script>
